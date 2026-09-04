@@ -71,7 +71,11 @@ export class GitHubProvider implements SourceControlProvider {
 
   async createFork(input: CreateForkInput): Promise<ForkState> {
     try {
-      const { data } = await this.octokit.rest.repos.createFork({ ...repoArgs(input.upstream), organization: input.destinationOwner });
+      const actor = await this.getAuthenticatedLogin();
+      const destination = actor.toLowerCase() === input.destinationOwner.toLowerCase()
+        ? {}
+        : { organization: input.destinationOwner };
+      const { data } = await this.octokit.rest.repos.createFork({ ...repoArgs(input.upstream), ...destination });
       return {
         upstream: input.upstream,
         fork: asRepo(data.owner.login, data.name),

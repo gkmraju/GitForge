@@ -86,9 +86,12 @@ const httpServer = createServer(async (req, res) => {
       const body = await readJson(req);
       const provider = GitHubProvider.fromToken(payload.githubToken);
       const mcp = createGitForgeMcpServer(provider);
-      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+      // v1 SDK documents undefined as the stateless mode sentinel, but its published
+      // types conflict with exactOptionalPropertyTypes. Keep the cast isolated here.
+      const transportOptions = { sessionIdGenerator: undefined } as unknown as ConstructorParameters<typeof StreamableHTTPServerTransport>[0];
+      const transport = new StreamableHTTPServerTransport(transportOptions);
       res.on("close", () => void transport.close());
-      await mcp.connect(transport);
+      await mcp.connect(transport as unknown as Parameters<typeof mcp.connect>[0]);
       await transport.handleRequest(req, res, body);
       return;
     }

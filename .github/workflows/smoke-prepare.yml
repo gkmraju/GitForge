@@ -1,0 +1,49 @@
+name: Smoke Prepare Workspace
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: Public GitHub repository in owner/repo form
+        required: true
+        default: jackwener/OpenCLI
+      destination_owner:
+        description: Destination GitHub account
+        required: true
+        default: gkmraju
+      branch:
+        description: Safe contribution branch to create
+        required: true
+        default: contrib/gitforge-smoke
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GITFORGE_GITHUB_TOKEN: ${{ secrets.GITFORGE_GITHUB_TOKEN }}
+      GITFORGE_TARGET_REPOSITORY: ${{ inputs.repository }}
+      GITFORGE_DESTINATION_OWNER: ${{ inputs.destination_owner }}
+      GITFORGE_BRANCH: ${{ inputs.branch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - run: npm run check
+      - run: npm test
+      - name: Verify secret presence
+        shell: bash
+        run: |
+          if [ -z "$GITFORGE_GITHUB_TOKEN" ]; then
+            echo "::error::Missing repository secret GITFORGE_GITHUB_TOKEN"
+            exit 1
+          fi
+      - name: Prepare contribution workspace
+        run: npx tsx scripts/smoke-prepare.ts

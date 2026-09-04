@@ -34,7 +34,11 @@ test("rejects a tampered session token", () => {
     issuedAt: now,
     expiresAt: now + 60_000,
   }, key);
-  const tampered = token.slice(0, -1) + (token.endsWith("A") ? "B" : "A");
+  const parts = token.split(".");
+  const ciphertext = parts[2]!;
+  const index = Math.floor(ciphertext.length / 2);
+  parts[2] = ciphertext.slice(0, index) + (ciphertext[index] === "A" ? "B" : "A") + ciphertext.slice(index + 1);
+  const tampered = parts.join(".");
 
   assert.throws(() => unsealPayload(tampered, key), (error: unknown) =>
     error instanceof GitForgeError && error.code === "AUTH_REQUIRED"

@@ -71,6 +71,11 @@ export class GitHubProvider implements SourceControlProvider {
 
   async createFork(input: CreateForkInput): Promise<ForkState> {
     try {
+      // Confirm the authenticated credential can resolve the public upstream before
+      // attempting the mutation. GitHub can return 404 for authorization failures,
+      // so this lets GitForge distinguish "source is invisible" from "fork denied".
+      await this.octokit.rest.repos.get(repoArgs(input.upstream));
+
       const actor = await this.getAuthenticatedLogin();
       const destination = actor.toLowerCase() === input.destinationOwner.toLowerCase()
         ? {}
@@ -86,7 +91,10 @@ export class GitHubProvider implements SourceControlProvider {
       };
     } catch (error: unknown) {
       const status = typeof error === "object" && error !== null && "status" in error ? Number((error as { status?: number }).status) : undefined;
-      throw new GitForgeError("FORK_FAILED", "GitHub fork creation failed.", status === 429 || status === 403 || (status !== undefined && status >= 500));
+      const message = status === 404
+        ? "GitHub fork creation returned 404. The source exists publicly, so verify the credential type/scope can fork arbitrary public repositories."
+        : "GitHub fork creation failed.";
+      throw new GitForgeError("FORK_FAILED", message, status === 429 || status === 403 || (status !== undefined && status >= 500));
     }
   }
 

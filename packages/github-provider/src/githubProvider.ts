@@ -136,8 +136,8 @@ export class GitHubProvider implements SourceControlProvider {
     } catch (error: unknown) {
       const status = typeof error === "object" && error !== null && "status" in error ? Number((error as { status?: number }).status) : undefined;
       if (status === 422) {
-        const { data } = await this.octokit.rest.git.getRef({ ...repoArgs(input.repository), ref: `heads/${input.branch}` });
-        if (ref.object.sha === input.sha) return;
+        const { data: existingRef } = await this.octokit.rest.git.getRef({ ...repoArgs(input.repository), ref: `heads/${input.branch}` });
+        if (existingRef.object.sha === input.sha) return;
       }
       throw new GitForgeError("BRANCH_FAILED", "Unable to create contribution branch.", status === 429 || (status !== undefined && status >= 500));
     }

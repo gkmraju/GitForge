@@ -20,3 +20,22 @@ jobs:
       - run: npm install --ignore-scripts
       - run: npm run check
       - run: npm test
+      - run: npm run build
+      - name: Boot hosted server and verify health
+        shell: bash
+        env:
+          PORT: 3100
+          GITHUB_OAUTH_CLIENT_ID: ci-placeholder
+          GITFORGE_SESSION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+        run: |
+          node dist/apps/http-server/src/index.js > /tmp/gitforge-http.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:3100/health | grep -q '"status":"ok"'; then
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat /tmp/gitforge-http.log
+          exit 1
